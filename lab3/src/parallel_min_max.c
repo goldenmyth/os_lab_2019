@@ -40,18 +40,24 @@ int main(int argc, char **argv) {
         switch (option_index) {
           case 0:
             seed = atoi(optarg);
-            // your code here
-            // error handling
+            if (seed < 0) { 
+              printf("Seed: %d cannot be negative\n", seed); 
+              return -1; 
+            }
             break;
           case 1:
             array_size = atoi(optarg);
-            // your code here
-            // error handling
+             if (array_size < 0) { 
+              printf("Array size: %d cannot be negative\n", array_size); 
+              return -1; 
+            }
             break;
           case 2:
             pnum = atoi(optarg);
-            // your code here
-            // error handling
+            if (pnum < 0) { 
+              printf("Pnum: %d cannot be negative\n", pnum);
+              return -1;
+            }
             break;
           case 3:
             with_files = true;
@@ -90,7 +96,16 @@ int main(int argc, char **argv) {
 
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
+  
+  for(int i = 0; i < array_size; ++i){ printf("%d\n", array[i]);}
 
+  FILE *f_min_max;
+  int my_pipe[2];
+  if (pipe(my_pipe)) {
+    printf("Error with pipe");
+    return 1;
+  }
+  if(with_files) f_min_max = fopen("/workspaces/os_lab_2019/lab3/src/f_min_max.txt", "w");
   for (int i = 0; i < pnum; i++) {
     pid_t child_pid = fork();
     if (child_pid >= 0) {
@@ -98,13 +113,17 @@ int main(int argc, char **argv) {
       active_child_processes += 1;
       if (child_pid == 0) {
         // child process
-
+        if(!with_files) close(my_pipe[0]);
         // parallel somehow
-
+        struct MinMax min_max = GetMinMax(array, i*array_size/pnum, ((i+1)*array_size)/pnum);
         if (with_files) {
           // use files here
-        } else {
-          // use pipe here
+          fwrite(&min_max.min, sizeof(int), 1, f_min_max);
+          fwrite(&min_max.max, sizeof(int), 1, f_min_max);
+        } 
+        else {
+          write(my_pipe[1], &min_max.min, sizeof(int));
+          write(my_pipe[1], &min_max.max, sizeof(int));
         }
         return 0;
       }
@@ -114,10 +133,16 @@ int main(int argc, char **argv) {
       return 1;
     }
   }
+  
+  if(with_files){
+     fclose(f_min_max);
+     f_min_max = fopen("/workspaces/os_lab_2019/lab3/src/f_min_max.txt", "r");
+  }
+
 
   while (active_child_processes > 0) {
     // your code here
-
+    wait(NULL);
     active_child_processes -= 1;
   }
 
@@ -129,15 +154,22 @@ int main(int argc, char **argv) {
     int min = INT_MAX;
     int max = INT_MIN;
 
+    if(!with_files) close(my_pipe[1]);
     if (with_files) {
-      // read from files
+      printf("flag3\n");
+      fread(&min, sizeof(int), 1, f_min_max);
+      fread(&max, sizeof(int), 1, f_min_max);
     } else {
-      // read from pipes
+      read(my_pipe[0], &min, sizeof(int));
+      read(my_pipe[0], &max, sizeof(int));
     }
 
     if (min < min_max.min) min_max.min = min;
     if (max > min_max.max) min_max.max = max;
   }
+
+  if(with_files) fclose(f_min_max);
+  close(my_pipe[0]);
 
   struct timeval finish_time;
   gettimeofday(&finish_time, NULL);
@@ -151,5 +183,6 @@ int main(int argc, char **argv) {
   printf("Max: %d\n", min_max.max);
   printf("Elapsed time: %fms\n", elapsed_time);
   fflush(NULL);
+  
   return 0;
 }
