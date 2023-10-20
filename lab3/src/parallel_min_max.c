@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
   
-  for(int i = 0; i < array_size; ++i){ printf("%d\n", array[i]);}
+  //for(int i = 0; i < array_size; ++i){ printf("%d\n", array[i]);}
 
   FILE *f_min_max;
   int my_pipe[2];
@@ -113,15 +113,16 @@ int main(int argc, char **argv) {
       active_child_processes += 1;
       if (child_pid == 0) {
         // child process
-        if(!with_files) close(my_pipe[0]);
         // parallel somehow
         struct MinMax min_max = GetMinMax(array, i*array_size/pnum, ((i+1)*array_size)/pnum);
         if (with_files) {
           // use files here
           fwrite(&min_max.min, sizeof(int), 1, f_min_max);
           fwrite(&min_max.max, sizeof(int), 1, f_min_max);
+          fclose(f_min_max); //закрываем файл для child потока
         } 
         else {
+          close(my_pipe[0]);
           write(my_pipe[1], &min_max.min, sizeof(int));
           write(my_pipe[1], &min_max.max, sizeof(int));
         }
@@ -139,12 +140,12 @@ int main(int argc, char **argv) {
      f_min_max = fopen("/workspaces/os_lab_2019/lab3/src/f_min_max.txt", "r");
   }
 
-
   while (active_child_processes > 0) {
     // your code here
     wait(NULL);
     active_child_processes -= 1;
   }
+
 
   struct MinMax min_max;
   min_max.min = INT_MAX;
@@ -154,12 +155,11 @@ int main(int argc, char **argv) {
     int min = INT_MAX;
     int max = INT_MIN;
 
-    if(!with_files) close(my_pipe[1]);
     if (with_files) {
-      printf("flag3\n");
       fread(&min, sizeof(int), 1, f_min_max);
       fread(&max, sizeof(int), 1, f_min_max);
     } else {
+      close(my_pipe[1]);
       read(my_pipe[0], &min, sizeof(int));
       read(my_pipe[0], &max, sizeof(int));
     }
