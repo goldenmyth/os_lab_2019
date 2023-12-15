@@ -1,0 +1,3 @@
+./client --k 10 --mod 13 --servers servers.txt
+./server --port 20001 --tnum 2
+./server --port 20002 --tnum 2

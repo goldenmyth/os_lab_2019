@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
 
 #include <errno.h>
 #include <getopt.h>
@@ -12,6 +11,9 @@
 #include <netinet/ip.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+
+#include "pthread.h"
+#include "multmodulo.h"
 
 bool ConvertStringToUI64(const char *str, uint64_t *val) {
   char *end = NULL;
@@ -164,7 +166,7 @@ int main(int argc, char **argv) {
   }
 
   // TODO: for one server here, rewrite with servers from file
-  FILE* addresses = fopen("servers.txt", "r");
+  FILE* addresses = fopen(servers, "r");
   if (addresses == NULL) {
     printf("cannot read addresses");
     return -1;
